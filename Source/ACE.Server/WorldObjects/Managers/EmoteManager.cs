@@ -173,7 +173,7 @@ namespace ACE.Server.WorldObjects.Managers
                         var amt = emote.Amount64 ?? emote.Amount ?? 0;
                         if (amt > 0)
                         {
-                            player.EarnXP(amt, XpType.Quest, ShareType.All);
+                            player.EarnXP((int)Math.Round(amt * PropertyManager.GetDouble("xp_modifier_quest").Item), XpType.Quest, ShareType.All);
                         }
                         else if (amt < 0)
                         {
