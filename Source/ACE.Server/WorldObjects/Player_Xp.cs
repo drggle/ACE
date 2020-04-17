@@ -419,7 +419,7 @@ namespace ACE.Server.WorldObjects
         {
             var nextLevelXP = GetXPBetweenLevels(Level.Value, Level.Value + 1);
 
-            var scaledXP = (long)Math.Round(nextLevelXP * percent);
+            var scaledXP = (long)Math.Round(nextLevelXP * percent * PropertyManager.GetDouble("xp_modifier_percentlevel").Item);
 
             if (max > 0)
                 scaledXP = Math.Min(scaledXP, max);

@@ -201,35 +201,32 @@ namespace ACE.Server.Factories
             // Last condition included to prevent equipment set Ids being added to armor weenies
             // that would be assigned AL via AssignArmorLevelCompat()
             if (PropertyManager.GetBool("equipmentsetid_enabled").Item
-                && wo.ClothingPriority != (CoverageMask)CoverageMaskHelper.Underwear && !wo.IsShield && profile.Tier > 6
+                && wo.ClothingPriority != (CoverageMask)CoverageMaskHelper.Underwear && !wo.IsShield && profile.Tier > 1
                 && (wo.GetProperty(PropertyInt.Version) ?? 0) >= 3)
             {
-                if (wo.WieldRequirements == WieldRequirement.Level || wo.WieldRequirements == WieldRequirement.RawSkill)
+                double dropRate = PropertyManager.GetDouble("equipmentsetid_drop_rate").Item;
+                double dropRateMod = 1.0 / dropRate;
+
+                double lootQualityMod = 1.0f;
+                if (PropertyManager.GetBool("loot_quality_mod").Item && profile.LootQualityMod > 0 && profile.LootQualityMod < 1)
+                    lootQualityMod = 1.0f - profile.LootQualityMod;
+
+                // Initial base 10% chance to add a random EquipmentSetID, which can be adjusted via property mod
+                int chance = ThreadSafeRandom.Next(1, (int)(100 * dropRateMod * lootQualityMod));
+                if (chance < 11)
                 {
-                    double dropRate = PropertyManager.GetDouble("equipmentsetid_drop_rate").Item;
-                    double dropRateMod = 1.0 / dropRate;
+                    equipSetId = (EquipmentSet)ThreadSafeRandom.Next((int)EquipmentSet.Soldiers, (int)EquipmentSet.Lightningproof);
 
-                    double lootQualityMod = 1.0f;
-                    if (PropertyManager.GetBool("loot_quality_mod").Item && profile.LootQualityMod > 0 && profile.LootQualityMod < 1)
-                        lootQualityMod = 1.0f - profile.LootQualityMod;
+                    wo.EquipmentSetId = equipSetId;
 
-                    // Initial base 10% chance to add a random EquipmentSetID, which can be adjusted via property mod
-                    int chance = ThreadSafeRandom.Next(1, (int)(100 * dropRateMod * lootQualityMod));
-                    if (chance < 11)
+                    if (PropertyManager.GetBool("equipmentsetid_name_decoration").Item)
                     {
-                        equipSetId = (EquipmentSet)ThreadSafeRandom.Next((int)EquipmentSet.Soldiers, (int)EquipmentSet.Lightningproof);
+                        string name = equipSetId.ToString();
 
-                        wo.EquipmentSetId = equipSetId;
+                        if (equipSetId >= EquipmentSet.Soldiers && equipSetId <= EquipmentSet.Crafters)
+                            name = name.TrimEnd('s') + "'s";
 
-                        if (PropertyManager.GetBool("equipmentsetid_name_decoration").Item)
-                        {
-                            string name = equipSetId.ToString();
-
-                            if (equipSetId >= EquipmentSet.Soldiers && equipSetId <= EquipmentSet.Crafters)
-                                name = name.TrimEnd('s') + "'s";
-
-                            wo.Name = string.Join(" ", name, wo.Name);
-                        }
+                        wo.Name = string.Join(" ", name, wo.Name);
                     }
                 }
             }
