@@ -13,6 +13,7 @@ using ACE.Server.Entity;
 using ACE.Server.Factories;
 using ACE.Server.Managers;
 using ACE.Server.Network.GameMessages.Messages;
+using ACE.Server.Network.GameEvent.Events;
 
 namespace ACE.Server.WorldObjects
 {
@@ -124,7 +125,12 @@ namespace ACE.Server.WorldObjects
             // check for looting permission
             if (!HasPermission(player))
             {
-                player.Session.Network.EnqueueSend(new GameMessageSystemChat("You don't have permission to loot the " + Name, ChatMessageType.Broadcast));
+                if (CorpseGeneratedRare)
+                    player.Session.Network.EnqueueSend(new GameEventCommunicationTransientString(player.Session, $"You may not loot the {Name} because the {Name} has generated a rare item."));
+                else if (PkLevel == PKLevel.PK)
+                    player.Session.Network.EnqueueSend(new GameEventCommunicationTransientString(player.Session, $"You may not loot the {Name} because the death was caused by a player killer."));
+                else
+                    player.Session.Network.EnqueueSend(new GameEventCommunicationTransientString(player.Session, $"You do not yet have the right to loot the {Name}."));
                 return;
             }
             base.Open(player);
@@ -140,22 +146,22 @@ namespace ACE.Server.WorldObjects
                 return true;
 
             // players can loot monsters they killed
-            if (KillerId != null && player.Guid.Full == KillerId || IsLooted)
+            if (KillerId != null && player.Guid.Full == KillerId || IsLooted && !CorpseGeneratedRare)
                 return true;
 
-            // players can /permit other players to loot their corpse
-            if (player.HasLootPermission(new ObjectGuid(VictimId.Value)))
+            // players can /permit other players to loot their corpse if not killed by another player killer.
+            if (player.HasLootPermission(new ObjectGuid(VictimId.Value)) && PkLevel != PKLevel.PK)
                 return true;
 
-            // all players can loot monster corpses after 1/2 decay time
-            if (TimeToRot != null && TimeToRot < HalfLife && !new ObjectGuid(VictimId.Value).IsPlayer())
+            // all players can loot monster corpses after 1/2 decay time except if corpse generates a rare
+            if (TimeToRot != null && TimeToRot < HalfLife && !new ObjectGuid(VictimId.Value).IsPlayer() && !CorpseGeneratedRare)
                 return true;
 
-            // players in the same fellowship as the killer w/ loot sharing enabled
+            // players in the same fellowship as the killer w/ loot sharing enabled except if corpse generates a rare
             if (player.Fellowship != null && player.Fellowship.ShareLoot)
             {
                 var onlinePlayer = PlayerManager.GetOnlinePlayer(KillerId ?? 0);
-                if (onlinePlayer != null && onlinePlayer.Fellowship != null && player.Fellowship == onlinePlayer.Fellowship)
+                if (onlinePlayer != null && onlinePlayer.Fellowship != null && player.Fellowship == onlinePlayer.Fellowship && !CorpseGeneratedRare)
                     return true;
             }
             return false;
